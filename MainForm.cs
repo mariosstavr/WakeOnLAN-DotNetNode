@@ -31,7 +31,7 @@ namespace WolClientApp
             MinimumSize = new Size(860, 600);
             BackColor = Color.FromArgb(244, 246, 249);
             
-            // Replace this with your Node.js server URL (safe placeholder for GitHub)
+            // Replace this with your Node.js server URL
             _client = new WolClient("http://localhost:5000");
 
             // Cards panel
