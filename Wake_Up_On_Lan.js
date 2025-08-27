@@ -5,7 +5,6 @@ const PORT = 5000;
 const ping = require('ping');
 app.use(express.static(__dirname));
 
-// ✅ Sanitized device list with placeholders
 const DEVICES = {
   pc1: { mac: 'AA:BB:CC:DD:EE:01', name: 'Office PC', host: 'OFFICE-PC' },
   pc2: { mac: 'AA:BB:CC:DD:EE:02', name: 'Living Room PC', host: 'LIVINGROOM' },
