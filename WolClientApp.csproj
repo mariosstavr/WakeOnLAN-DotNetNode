@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>myStirixisPowerOn</AssemblyName>
-    <applicationIcon>favicon.ico</applicationIcon>
+    <AssemblyName>Wake_Up_On_Lan</AssemblyName>
+    
   
   </PropertyGroup>
 
