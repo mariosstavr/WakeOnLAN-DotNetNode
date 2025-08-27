@@ -32,7 +32,7 @@ namespace WolClientApp
             BackColor = Color.FromArgb(244, 246, 249);
             
             // Replace this with your Node.js server URL (safe placeholder for GitHub)
-            _client = new WolClient("http://localhost:7010");
+            _client = new WolClient("http://localhost:5000");
 
             // Cards panel
             cardsPanel = new FlowLayoutPanel
