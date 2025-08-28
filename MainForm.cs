@@ -24,17 +24,15 @@ namespace WolClientApp
             new Device("Media Center", "pc6"),
         };
 
-        public MainForm()
+     public MainForm()
         {
-            Text = "PowerUp - WOL Client";
+            Text = "PowerUp Stirixis - WOL Client";
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(860, 600);
+            MinimumSize = new Size(860, 700);
             BackColor = Color.FromArgb(244, 246, 249);
-            
-            // Replace this with your Node.js server URL
+
             _client = new WolClient("http://localhost:5000");
 
-            // Cards panel
             cardsPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -46,7 +44,6 @@ namespace WolClientApp
             };
             Controls.Add(cardsPanel);
 
-            // Log box
             logBox = new TextBox
             {
                 Dock = DockStyle.Bottom,
@@ -60,6 +57,27 @@ namespace WolClientApp
             Controls.Add(logBox);
 
             BuildCards();
+
+            // Add Check Status button centered below cardsPanel
+            var checkStatusBtn = new Button
+            {
+                Text = "Check Status",
+                Height = 36,
+                Width = 150,
+                BackColor = Color.FromArgb(0, 120, 215),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            checkStatusBtn.FlatAppearance.BorderSize = 0;
+            checkStatusBtn.Location = new Point((ClientSize.Width - checkStatusBtn.Width) / 2, cardsPanel.Bottom + 10);
+            checkStatusBtn.Anchor = AnchorStyles.Top;
+            checkStatusBtn.Click += async (_, __) => await CheckAllStatuses();
+            Controls.Add(checkStatusBtn);
+
+            this.Resize += (s, e) =>
+            {
+                checkStatusBtn.Location = new Point((ClientSize.Width - checkStatusBtn.Width) / 2, cardsPanel.Bottom + 10);
+            };
         }
 
         private void BuildCards()
@@ -94,15 +112,28 @@ namespace WolClientApp
             };
             card.Controls.Add(name);
 
-            var status = new Label
+            // Status circle
+            var statusCircle = new Panel
+            {
+                Width = 20,
+                Height = 20,
+                BackColor = Color.Gray,
+                Location = new Point((card.Width - 20) / 2, 50),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            card.Controls.Add(statusCircle);
+
+            // Status label
+            var statusLabel = new Label
             {
                 Text = "Status: unknown",
                 AutoSize = false,
                 Dock = DockStyle.Top,
                 Height = 26,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                Location = new Point(0, 75)
             };
-            card.Controls.Add(status);
+            card.Controls.Add(statusLabel);
 
             var btn = new Button
             {
@@ -114,22 +145,24 @@ namespace WolClientApp
                 FlatStyle = FlatStyle.Flat
             };
             btn.FlatAppearance.BorderSize = 0;
-            btn.Location = new Point((card.Width - btn.Width) / 2, 95);
+            btn.Location = new Point((card.Width - btn.Width) / 2, 105);
             btn.Anchor = AnchorStyles.None;
-
-            btn.Click += async (_, __) => await WakeDevice(d, status);
-
+            btn.Click += async (_, __) => await WakeDevice(d, statusLabel, statusCircle);
             card.Controls.Add(btn);
+
+            d.StatusLabel = statusLabel;
+            d.StatusCircle = statusCircle;
 
             return card;
         }
 
-        private async Task WakeDevice(Device d, Label statusLabel)
+        private async Task WakeDevice(Device d, Label statusLabel, Panel statusCircle)
         {
             try
             {
                 Log($"[{d.Name}] Sending WOL request…");
                 statusLabel.Text = "Status: sending…";
+                statusCircle.BackColor = Color.Gray;
 
                 string html = await _client.WakeDevice(d.Id);
                 string result = ExtractH2Text(html);
@@ -137,12 +170,49 @@ namespace WolClientApp
                 Log($"[{d.Name}] {result}");
                 statusLabel.Text = $"Status: {result}";
 
+                if (result.Contains("already ON") || result.Contains("powers on"))
+                    statusCircle.BackColor = Color.Green;
+                else
+                    statusCircle.BackColor = Color.Red;
+
                 MessageBox.Show(result, d.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 Log($"[{d.Name}] Error: {ex.Message}");
+                statusLabel.Text = "Status: error";
+                statusCircle.BackColor = Color.Red;
                 MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task CheckAllStatuses()
+        {
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                var response = await client.GetAsync("http://10.0.0.142:7010/status");
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync();
+                var statusDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+
+                foreach (var d in devices)
+                {
+                    if (statusDict != null && statusDict.TryGetValue(d.Id, out var state))
+                    {
+                        d.StatusLabel.Text = $"Status: {state}";
+                        d.StatusCircle.BackColor = state == "online" ? Color.Green : Color.Red;
+                    }
+                    else
+                    {
+                        d.StatusLabel.Text = "Status: unknown";
+                        d.StatusCircle.BackColor = Color.Gray;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Check status error: {ex.Message}");
             }
         }
 
@@ -158,7 +228,11 @@ namespace WolClientApp
         }
     }
 
-    public record Device(string Name, string Id);
+    public record Device(string Name, string Id)
+    {
+        public Label StatusLabel { get; set; }
+        public Panel StatusCircle { get; set; }
+    }
 
     public class WolClient
     {
